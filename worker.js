@@ -2993,7 +2993,7 @@ var src_default = {
         } else {
           parsedObj = parseData(url2);
         }
-        if (/^(ssr?|vmess1?|trojan|vless|hysteria):\/\//.test(url2)) {
+        if (/^(ssr?|vmess1?|trojan|vless|hysteria|anytls):\/\//.test(url2)) {
           const newLink = replaceInUri(url2, replacements, false);
           if (newLink)
             replacedURIs.push(newLink);
@@ -3067,6 +3067,8 @@ function replaceInUri(link, replacements, isRecovery) {
       return replaceTrojan(link, replacements, isRecovery);
     case link.startsWith("hysteria://"):
       return replaceHysteria(link, replacements);
+    case link.startsWith("anytls://"):
+      return replaceAnyTLS(link, replacements, isRecovery);
     default:
       return;
   }
@@ -3220,6 +3222,46 @@ function replaceHysteria(link, replacements) {
   const randomDomain = generateRandomStr(12) + ".com";
   replacements[randomDomain] = server;
   return link.replace(server, randomDomain);
+}
+function replaceAnyTLS(link, replacements, isRecovery) {
+  let url;
+  try {
+    url = new URL(link);
+  } catch (error) {
+    return;
+  }
+  const server = url.hostname;
+  const username = decodeURIComponent(url.username || "");
+  const password = decodeURIComponent(url.password || "");
+  if (!server) {
+    return;
+  }
+  const randomDomain = generateRandomStr(10) + ".com";
+  if (isRecovery) {
+    if (replacements[server]) {
+      url.hostname = replacements[server];
+    }
+    if (username && replacements[username]) {
+      url.username = encodeURIComponent(replacements[username]);
+    }
+    if (password && replacements[password]) {
+      url.password = encodeURIComponent(replacements[password]);
+    }
+  } else {
+    replacements[randomDomain] = server;
+    url.hostname = randomDomain;
+    if (username) {
+      const randomUsername = generateRandomStr(12);
+      replacements[randomUsername] = username;
+      url.username = encodeURIComponent(randomUsername);
+    }
+    if (password) {
+      const randomPassword = generateRandomStr(12);
+      replacements[randomPassword] = password;
+      url.password = encodeURIComponent(randomPassword);
+    }
+  }
+  return url.toString();
 }
 function replaceYAML(yamlObj, replacements) {
   if (!yamlObj.proxies) {
